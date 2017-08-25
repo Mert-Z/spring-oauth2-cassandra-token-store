@@ -1,4 +1,4 @@
-# Cassandra OAuth2 Token Store for Spring Security OAuth2
+# Cassandra OAuth2 Token Store for Spring Security OAuth2 [![Build Status](https://travis-ci.org/Mert-Z/spring-oauth2-cassandra-token-store.svg?branch=master)](https://travis-ci.org/Mert-Z/spring-oauth2-cassandra-token-store)
 
 Implementation of [org.springframework.security.oauth2.provider.token.TokenStore](https://github.com/spring-projects/spring-security-oauth/blob/master/spring-security-oauth2/src/main/java/org/springframework/security/oauth2/provider/token/TokenStore.java) backed by Cassandra **(which can be executed on multi node cluster)**.
 
