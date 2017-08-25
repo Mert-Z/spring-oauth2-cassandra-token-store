@@ -11,7 +11,7 @@ import org.springframework.data.cassandra.config.java.AbstractCassandraConfigura
 import org.springframework.data.cassandra.repository.config.EnableCassandraRepositories;
 
 @Configuration
-@EnableCassandraRepositories(basePackages = "demo.security.oauth2.provider.token.store.cassandra.repo")
+@EnableCassandraRepositories(basePackages = "mertz.security.oauth2.provider.token.store.cassandra.repo")
 public class CassandraConfig extends AbstractCassandraConfiguration {
 
   private @Value("${spring.data.cassandra.keyspace-name}") String keyspaceName;
@@ -33,7 +33,7 @@ public class CassandraConfig extends AbstractCassandraConfiguration {
 
   @Override
   public String[] getEntityBasePackages() {
-    return new String[] { "demo.security.oauth2.provider.token.store.cassandra.model" };
+    return new String[] { "mertz.security.oauth2.provider.token.store.cassandra.model" };
   }
 
   @Override

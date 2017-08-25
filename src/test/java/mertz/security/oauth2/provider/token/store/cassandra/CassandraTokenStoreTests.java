@@ -39,7 +39,7 @@ public class CassandraTokenStoreTests extends TokenStoreBaseTests {
   }
 
   @Configuration
-  @ComponentScan(basePackages = "demo.security.oauth2.provider.token.store.cassandra")
+  @ComponentScan(basePackages = "mertz.security.oauth2.provider.token.store.cassandra")
   public static class SpringConfig {
 
   }
