@@ -37,3 +37,10 @@ dependencies {
 bootRepackage {
     enabled = false
 }
+
+test {
+  filter {
+     //Test using Embedded Cassandra by default
+     includeTestsMatching "mertz.security.oauth2.provider.token.store.cassandra.EmbeddedCassandraTokenStoreTests"
+   }
+}
