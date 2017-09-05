@@ -41,7 +41,7 @@ CassandraTokenStore is tested using [spring-security-oauth2 token store tests](h
 
 EmbeddedCassandraTokenStoreTests can be executed as shown below;
 ```
-gradlew.bat test --tests mertz.security.oauth2.provider.token.store.cassandra.EmbeddedCassandraTokenStoreTests
+./gradlew test --tests mertz.security.oauth2.provider.token.store.cassandra.EmbeddedCassandraTokenStoreTests
 ```
 
 ## License
