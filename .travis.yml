@@ -4,7 +4,11 @@ services:
   - cassandra
 
 before_install:
- - chmod +x gradlew
+  - chmod +x gradlew
+
+install:
+  # skip ./gradlew assemble since it fails on :bootRepackage task with 'Unable to find main class' error which is expected.
+  - true
 
 before_script:
   # give some more time for Cassandra to finish startup and actually test it
