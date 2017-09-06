@@ -1,3 +1,9 @@
 language: java
+
 services:
   - cassandra
+
+before_script:
+  # give some more time for Cassandra to finish startup and actually test it
+  - sleep 10
+  - sudo service cassandra status
