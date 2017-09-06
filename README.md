@@ -35,9 +35,14 @@ public class AuthorizationServerConfiguration extends AuthorizationServerConfigu
 ## Running the tests
 CassandraTokenStore is tested using [spring-security-oauth2 token store tests](https://github.com/spring-projects/spring-security-oauth/blob/master/spring-security-oauth2/src/test/java/org/springframework/security/oauth2/provider/token/store/TokenStoreBaseTests.java).
 
-[CassandraTokenStoreTests](https://github.com/Mert-Z/spring-oauth2-cassandra-token-store/blob/master/src/test/java/mertz/security/oauth2/provider/token/store/cassandra/CassandraTokenStoreTests.java) initializes a test context which looks for connecting to an external standalone Cassandra instance listening connections on *localhost:9042*.
+[CassandraTokenStoreTests](https://github.com/Mert-Z/spring-oauth2-cassandra-token-store/blob/master/src/test/java/mertz/security/oauth2/provider/token/store/cassandra/CassandraTokenStoreTests.java) initializes a test context which looks for connecting to an external standalone Cassandra instance listening connections on *127.0.0.1:9042*.
 
-[EmbeddedCassandraTokenStoreTests](https://github.com/Mert-Z/spring-oauth2-cassandra-token-store/blob/master/src/test/java/mertz/security/oauth2/provider/token/store/cassandra/EmbeddedCassandraTokenStoreTests.java) extends *CassandraTokenStoreTests* for providing a test context which starts an embedded Cassandra instance listening connections on *localhost:9142*. Embedded Cassandra is provided by [Spring for Cassandra unit](https://github.com/jsevellec/cassandra-unit/wiki/Spring-for-Cassandra-unit).
+CassandraTokenStoreTests can be executed as shown below;
+```
+./gradlew test --tests mertz.security.oauth2.provider.token.store.cassandra.CassandraTokenStoreTests
+```
+
+[EmbeddedCassandraTokenStoreTests](https://github.com/Mert-Z/spring-oauth2-cassandra-token-store/blob/master/src/test/java/mertz/security/oauth2/provider/token/store/cassandra/EmbeddedCassandraTokenStoreTests.java) extends *CassandraTokenStoreTests* for providing a test context which starts an embedded Cassandra instance listening connections on *127.0.0.1:9142*. Embedded Cassandra is provided by [Spring for Cassandra unit](https://github.com/jsevellec/cassandra-unit/wiki/Spring-for-Cassandra-unit).
 
 EmbeddedCassandraTokenStoreTests can be executed as shown below;
 ```
