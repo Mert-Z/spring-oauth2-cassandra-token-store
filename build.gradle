@@ -32,15 +32,3 @@ dependencies {
   testCompile('org.springframework.security:spring-security-test')
   testCompile('org.cassandraunit:cassandra-unit-spring:3.1.3.2')
 }
-
-// Avoid travis-ci look for main class
-bootRepackage {
-    enabled = false
-}
-
-test {
-  filter {
-     //Test using external Cassandra by default
-     includeTestsMatching "mertz.security.oauth2.provider.token.store.cassandra.CassandraTokenStoreTests"
-   }
-}
