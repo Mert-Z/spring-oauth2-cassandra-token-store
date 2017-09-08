@@ -18,5 +18,5 @@ before_script:
 script:
   - ./gradlew clean test --debug --tests mertz.security.oauth2.provider.token.store.cassandra.CassandraTokenStoreTests
   
-#after_success:
-#  - ./gradlew clean test --tests mertz.security.oauth2.provider.token.store.cassandra.CassandraTokenStoreTests jacocoTestReport coveralls:report
+after_success:
+  - ./gradlew clean test --tests mertz.security.oauth2.provider.token.store.cassandra.CassandraTokenStoreTests jacocoTestReport coveralls:report
