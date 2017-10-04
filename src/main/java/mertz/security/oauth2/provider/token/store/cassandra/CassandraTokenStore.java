@@ -3,13 +3,11 @@ package mertz.security.oauth2.provider.token.store.cassandra;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,10 +29,8 @@ import com.datastax.driver.core.querybuilder.Batch;
 import com.datastax.driver.core.querybuilder.Delete;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
-import com.datastax.driver.core.querybuilder.Update;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
+import mertz.security.oauth2.provider.token.store.cassandra.cfg.OAuthUtil;
 import mertz.security.oauth2.provider.token.store.cassandra.model.AccessToken;
 import mertz.security.oauth2.provider.token.store.cassandra.model.Authentication;
 import mertz.security.oauth2.provider.token.store.cassandra.model.AuthenticationToAccessToken;
@@ -90,9 +86,6 @@ public class CassandraTokenStore implements TokenStore {
   @Autowired
   private AuthenticationKeyGenerator authenticationKeyGenerator;
 
-  @Autowired
-  private ObjectMapper mapper;
-
   @Override
   public OAuth2Authentication readAuthentication(OAuth2AccessToken token) {
     return readAuthentication(token.getValue());
@@ -115,14 +108,7 @@ public class CassandraTokenStore implements TokenStore {
   @Override
   public void storeAccessToken(OAuth2AccessToken token, OAuth2Authentication authentication) {
     List<RegularStatement> statementList = new ArrayList<RegularStatement>();
-
-    String jsonAccessToken;
-    try {
-      jsonAccessToken = mapper.writeValueAsString(token);
-    } catch (JsonProcessingException e) {
-      logger.error("Error converting OAuth2AccessToken to json.");
-      throw new RuntimeException(e);
-    }
+    String jsonAccessToken = OAuthUtil.serializeOAuth2AccessToken(token);
     byte[] serializedOAuth2Authentication = SerializationUtils.serialize(authentication);
     ByteBuffer bufferedOAuth2Authentication = ByteBuffer.wrap(serializedOAuth2Authentication);
     WriteOptions accessWriteOptions = new WriteOptions();
@@ -131,49 +117,25 @@ public class CassandraTokenStore implements TokenStore {
       accessWriteOptions.setTtl(seconds);
     }
 
-    Insert accessInsert = CassandraTemplate.createInsertQuery(AccessToken.TABLE,
-        new AccessToken(token.getValue(), jsonAccessToken), accessWriteOptions, cassandraTemplate.getConverter());
+    // Insert into AccessToken table
+    Insert accessInsert = CassandraTemplate.createInsertQuery(AccessToken.TABLE, new AccessToken(token.getValue(), jsonAccessToken), accessWriteOptions, cassandraTemplate.getConverter());
     statementList.add(accessInsert);
 
-    Insert authInsert = CassandraTemplate.createInsertQuery(Authentication.TABLE,
-        new Authentication(token.getValue(), bufferedOAuth2Authentication), accessWriteOptions,
-        cassandraTemplate.getConverter());
+    // Insert into Authentication table
+    Insert authInsert = CassandraTemplate.createInsertQuery(Authentication.TABLE, new Authentication(token.getValue(), bufferedOAuth2Authentication), accessWriteOptions, cassandraTemplate.getConverter());
     statementList.add(authInsert);
 
-    Insert authToAccessInsert = CassandraTemplate.createInsertQuery(AuthenticationToAccessToken.TABLE,
-        new AuthenticationToAccessToken(authenticationKeyGenerator.extractKey(authentication), jsonAccessToken),
-        accessWriteOptions, cassandraTemplate.getConverter());
+    // Insert into AuthenticationToAccessToken table
+    Insert authToAccessInsert = CassandraTemplate.createInsertQuery(AuthenticationToAccessToken.TABLE, new AuthenticationToAccessToken(authenticationKeyGenerator.extractKey(authentication), jsonAccessToken), accessWriteOptions, cassandraTemplate.getConverter());
     statementList.add(authToAccessInsert);
 
-    if (!authentication.isClientOnly()) {
-      UsernameToAccessToken usernameToAccessToken = usernameToAccessTokenRepository.findOne(getApprovalKey(authentication));
-      if (usernameToAccessToken == null) {
-        Insert unameToAccessInsert = CassandraTemplate.createInsertQuery(UsernameToAccessToken.TABLE,
-            new UsernameToAccessToken(getApprovalKey(authentication),
-                Stream.of(jsonAccessToken).collect(Collectors.toCollection(HashSet::new))),
-            accessWriteOptions, cassandraTemplate.getConverter());
-        statementList.add(unameToAccessInsert);
-      } else {
-        usernameToAccessToken.getoAuth2AccessTokenSet().add(jsonAccessToken);
-        Update unameToAccessUpdate = CassandraTemplate.createUpdateQuery(UsernameToAccessToken.TABLE,
-            usernameToAccessToken, accessWriteOptions, cassandraTemplate.getConverter());
-        statementList.add(unameToAccessUpdate);
-      }
-    }
+    // Insert into UsernameToAccessToken table
+    Insert unameToAccessInsert = CassandraTemplate.createInsertQuery(UsernameToAccessToken.TABLE, new UsernameToAccessToken(OAuthUtil.getApprovalKey(authentication), jsonAccessToken), accessWriteOptions, cassandraTemplate.getConverter());
+    statementList.add(unameToAccessInsert);
 
-    ClientIdToAccessToken clientIdToAccessToken = clientIdToAccessTokenRepository.findOne(authentication.getOAuth2Request().getClientId());
-    if (clientIdToAccessToken == null) {
-      Insert clientIdToAccessInsert = CassandraTemplate.createInsertQuery(ClientIdToAccessToken.TABLE,
-          new ClientIdToAccessToken(authentication.getOAuth2Request().getClientId(),
-              Stream.of(jsonAccessToken).collect(Collectors.toCollection(HashSet::new))),
-          accessWriteOptions, cassandraTemplate.getConverter());
-      statementList.add(clientIdToAccessInsert);
-    } else {
-      clientIdToAccessToken.getoAuth2AccessTokenSet().add(jsonAccessToken);
-      Update clientIdToAccessUpdate = CassandraTemplate.createUpdateQuery(ClientIdToAccessToken.TABLE,
-          clientIdToAccessToken, accessWriteOptions, cassandraTemplate.getConverter());
-      statementList.add(clientIdToAccessUpdate);
-    }
+    // Insert into ClientIdToAccessToken table
+    Insert clientIdToAccessInsert = CassandraTemplate.createInsertQuery(ClientIdToAccessToken.TABLE, new ClientIdToAccessToken(authentication.getOAuth2Request().getClientId(), jsonAccessToken), accessWriteOptions, cassandraTemplate.getConverter());
+    statementList.add(clientIdToAccessInsert);
 
     OAuth2RefreshToken oAuth2RefreshToken = token.getRefreshToken();
     if (oAuth2RefreshToken != null && oAuth2RefreshToken.getValue() != null) {
@@ -186,12 +148,9 @@ public class CassandraTokenStore implements TokenStore {
           refreshWriteOptions.setTtl(seconds);
         }
       }
-
-      Insert refreshTokenToAccessTokenInsert = CassandraTemplate.createInsertQuery(RefreshTokenToAccessToken.TABLE,
-          new RefreshTokenToAccessToken(token.getRefreshToken().getValue(), token.getValue()), refreshWriteOptions,
-          cassandraTemplate.getConverter());
+      // Insert into RefreshTokenToAccessToken table
+      Insert refreshTokenToAccessTokenInsert = CassandraTemplate.createInsertQuery(RefreshTokenToAccessToken.TABLE, new RefreshTokenToAccessToken(token.getRefreshToken().getValue(), token.getValue()), refreshWriteOptions, cassandraTemplate.getConverter());
       statementList.add(refreshTokenToAccessTokenInsert);
-
     }
 
     Batch batch = QueryBuilder.batch(statementList.toArray(new RegularStatement[statementList.size()]));
@@ -202,15 +161,7 @@ public class CassandraTokenStore implements TokenStore {
   public OAuth2AccessToken readAccessToken(String tokenValue) {
     AccessToken accessToken = accessTokenRepository.findOne(tokenValue);
     if (accessToken != null) {
-      String jsonOAuth2AccessToken = accessToken.getoAuth2AccessToken();
-      OAuth2AccessToken oAuth2AccessToken;
-      try {
-        oAuth2AccessToken = mapper.readValue(jsonOAuth2AccessToken, OAuth2AccessToken.class);
-      } catch (Exception e) {
-        logger.error("Error converting json string to OAuth2AccessToken. {}", jsonOAuth2AccessToken);
-        throw new RuntimeException(e);
-      }
-      return oAuth2AccessToken;
+      return OAuthUtil.deserializeOAuth2AccessToken(accessToken.getoAuth2AccessToken());
     } else {
       return null;
     }
@@ -218,61 +169,51 @@ public class CassandraTokenStore implements TokenStore {
 
   @Override
   public void removeAccessToken(OAuth2AccessToken token) {
-    String tokenValue = token.getValue();
-    List<RegularStatement> statementList = prepareRemoveAccessTokenStatements(tokenValue);
+    List<RegularStatement> statementList = prepareRemoveAccessTokenStatements(token);
     Batch batch = QueryBuilder.batch(statementList.toArray(new RegularStatement[statementList.size()]));
     cassandraTemplate.execute(batch);
   }
 
-  private List<RegularStatement> prepareRemoveAccessTokenStatements(String tokenValue) {
+  private List<RegularStatement> prepareRemoveAccessTokenStatements(OAuth2AccessToken token) {
+    //String tokenId = token.getValue();
+    String tokenValue = token.getValue();
+    String jsonOAuth2AccessToken = OAuthUtil.serializeOAuth2AccessToken(token);
     List<RegularStatement> statementList = new ArrayList<RegularStatement>();
+    
+    // Delete from AccessToken table
+    RegularStatement accessTokenDelete = prepareDeleteByPrimaryKeyRegularStatement(AccessToken.class, tokenValue);
+    statementList.add(accessTokenDelete);
 
-    AccessToken accessToken = accessTokenRepository.findOne(tokenValue);
-    if (accessToken != null) {
-      Delete accessTokenDelete = CassandraTemplate.createDeleteQuery(AccessToken.TABLE, accessToken, null,
-          cassandraTemplate.getConverter());
-      statementList.add(accessTokenDelete);
-    }
-
+    // Lookup Authentication table for further deleting from AuthenticationToAccessToken table
     Authentication authentication = authenticationRepository.findOne(tokenValue);
     if (authentication != null) {
       ByteBuffer bufferedOAuth2Authentication = authentication.getoAuth2Authentication();
       byte[] serializedOAuth2Authentication = new byte[bufferedOAuth2Authentication.remaining()];
       bufferedOAuth2Authentication.get(serializedOAuth2Authentication);
-
       OAuth2Authentication oAuth2Authentication = SerializationUtils.deserialize(serializedOAuth2Authentication);
       String clientId = oAuth2Authentication.getOAuth2Request().getClientId();
 
-      Delete authenticationDelete = CassandraTemplate.createDeleteQuery(Authentication.TABLE, authentication, null,
-          cassandraTemplate.getConverter());
+      // Delete from Authentication table
+      RegularStatement authenticationDelete = prepareDeleteByPrimaryKeyRegularStatement(Authentication.class, tokenValue);
       statementList.add(authenticationDelete);
 
-      AuthenticationToAccessToken authenticationToAccessToken = authenticationToAccessTokenRepository
-          .findOne(authenticationKeyGenerator.extractKey(oAuth2Authentication));
-      if (authenticationToAccessToken != null) {
-        Delete authToAccessDelete = CassandraTemplate.createDeleteQuery(AuthenticationToAccessToken.TABLE,
-            authenticationToAccessToken, null, cassandraTemplate.getConverter());
-        statementList.add(authToAccessDelete);
-      }
+      // Delete from AuthenticationToAccessToken table
+      RegularStatement authToAccessDelete = prepareDeleteByPrimaryKeyRegularStatement(AuthenticationToAccessToken.class, authenticationKeyGenerator.extractKey(oAuth2Authentication));
+      statementList.add(authToAccessDelete);
 
-      UsernameToAccessToken usernameToAccessToken = usernameToAccessTokenRepository
-          .findOne(getApprovalKey(clientId, oAuth2Authentication.getName()));
-      if (usernameToAccessToken != null && usernameToAccessToken.getoAuth2AccessTokenSet() != null
-          && !usernameToAccessToken.getoAuth2AccessTokenSet().isEmpty()) {
-        usernameToAccessToken.getoAuth2AccessTokenSet().remove(accessToken.getoAuth2AccessToken());
-        Update unameToAccessUpdate = CassandraTemplate.createUpdateQuery(UsernameToAccessToken.TABLE,
-            usernameToAccessToken, null, cassandraTemplate.getConverter());
-        statementList.add(unameToAccessUpdate);
-      }
+      // Delete from UsernameToAccessToken table
+      Optional<UsernameToAccessToken> optionalUsernameToAccessToken = usernameToAccessTokenRepository.findByKeyAndOAuth2AccessToken(OAuthUtil.getApprovalKey(clientId, oAuth2Authentication.getName()), jsonOAuth2AccessToken);
+      optionalUsernameToAccessToken.ifPresent(usernameToAccessToken -> {
+        Delete usernameToAccessDelete = CassandraTemplate.createDeleteQuery(UsernameToAccessToken.TABLE, usernameToAccessToken, null, cassandraTemplate.getConverter());
+        statementList.add(usernameToAccessDelete);
+      });
 
-      ClientIdToAccessToken clientIdToAccessToken = clientIdToAccessTokenRepository.findOne(clientId);
-      if (clientIdToAccessToken != null && clientIdToAccessToken.getoAuth2AccessTokenSet() != null
-          && !clientIdToAccessToken.getoAuth2AccessTokenSet().isEmpty()) {
-        clientIdToAccessToken.getoAuth2AccessTokenSet().remove(accessToken.getoAuth2AccessToken());
-        Update clientIdToAccessUpdate = CassandraTemplate.createUpdateQuery(ClientIdToAccessToken.TABLE,
-            clientIdToAccessToken, null, cassandraTemplate.getConverter());
-        statementList.add(clientIdToAccessUpdate);
-      }
+      // Delete from ClientIdToAccessToken table
+      Optional<ClientIdToAccessToken> optionalClientIdToAccessToken = clientIdToAccessTokenRepository.findByKeyAndOAuth2AccessToken(clientId, jsonOAuth2AccessToken);
+      optionalClientIdToAccessToken.ifPresent(clientIdToAccessToken -> {
+        Delete clientIdToAccessDelete = CassandraTemplate.createDeleteQuery(ClientIdToAccessToken.TABLE, clientIdToAccessToken, null, cassandraTemplate.getConverter());
+        statementList.add(clientIdToAccessDelete);
+      });
     }
 
     return statementList;
@@ -298,14 +239,12 @@ public class CassandraTokenStore implements TokenStore {
       }
     }
 
-    Insert accessInsert = CassandraTemplate.createInsertQuery(RefreshToken.TABLE,
-        new RefreshToken(refreshToken.getValue(), bufferedRefreshToken), refreshWriteOptions,
-        cassandraTemplate.getConverter());
+    // Insert into RefreshToken table
+    Insert accessInsert = CassandraTemplate.createInsertQuery(RefreshToken.TABLE, new RefreshToken(refreshToken.getValue(), bufferedRefreshToken), refreshWriteOptions, cassandraTemplate.getConverter());
     statementList.add(accessInsert);
 
-    Insert authInsert = CassandraTemplate.createInsertQuery(RefreshTokenAuthentication.TABLE,
-        new RefreshTokenAuthentication(refreshToken.getValue(), bufferedAuthentication), refreshWriteOptions,
-        cassandraTemplate.getConverter());
+    // Insert into RefreshTokenAuthentication table
+    Insert authInsert = CassandraTemplate.createInsertQuery(RefreshTokenAuthentication.TABLE, new RefreshTokenAuthentication(refreshToken.getValue(), bufferedAuthentication), refreshWriteOptions, cassandraTemplate.getConverter());
     statementList.add(authInsert);
 
     Batch batch = QueryBuilder.batch(statementList.toArray(new RegularStatement[statementList.size()]));
@@ -328,8 +267,7 @@ public class CassandraTokenStore implements TokenStore {
 
   @Override
   public OAuth2Authentication readAuthenticationForRefreshToken(OAuth2RefreshToken token) {
-    RefreshTokenAuthentication refreshTokenAuthentication = refreshTokenAuthenticationRepository
-        .findOne(token.getValue());
+    RefreshTokenAuthentication refreshTokenAuthentication = refreshTokenAuthenticationRepository.findOne(token.getValue());
     if (refreshTokenAuthentication != null) {
       ByteBuffer bufferedOAuth2Authentication = refreshTokenAuthentication.getoAuth2Authentication();
       byte[] serializedOAuth2Authentication = new byte[bufferedOAuth2Authentication.remaining()];
@@ -345,8 +283,11 @@ public class CassandraTokenStore implements TokenStore {
   public void removeRefreshToken(OAuth2RefreshToken token) {
     String tokenValue = token.getValue();
     List<RegularStatement> statementList = new ArrayList<RegularStatement>();
+    // Delete from RefreshToken table
     statementList.add(prepareDeleteByPrimaryKeyRegularStatement(RefreshToken.class, tokenValue));
+    // Delete from RefreshTokenAuthentication table
     statementList.add(prepareDeleteByPrimaryKeyRegularStatement(RefreshTokenAuthentication.class, tokenValue));
+    // Delete from RefreshTokenToAccessToken table
     statementList.add(prepareDeleteByPrimaryKeyRegularStatement(RefreshTokenToAccessToken.class, tokenValue));
     Batch batch = QueryBuilder.batch(statementList.toArray(new RegularStatement[statementList.size()]));
     cassandraTemplate.execute(batch);
@@ -355,33 +296,32 @@ public class CassandraTokenStore implements TokenStore {
   private RegularStatement prepareDeleteByPrimaryKeyRegularStatement(Class<?> repositoryClass, String primaryKeyValue) {
     RegularStatement deleteRegularStatement;
     try {
-      deleteRegularStatement = QueryBuilder.delete()
-          .from(repositoryClass.getDeclaredField("TABLE").get(null).toString())
-          .where(QueryBuilder.eq(cassandraMappingContext.getPersistentEntity(repositoryClass).getIdProperty().getColumnName().toCql(), primaryKeyValue));
+      deleteRegularStatement = QueryBuilder.delete().from(repositoryClass.getDeclaredField("TABLE").get(null).toString()).where(QueryBuilder.eq(cassandraMappingContext.getPersistentEntity(repositoryClass).getIdProperty().getColumnName().toCql(), primaryKeyValue));
     } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
       logger.error("Error preparing delete statement for repository {}.", repositoryClass.getSimpleName());
       throw new RuntimeException(e);
     }
     return deleteRegularStatement;
   }
-  
+
   @Override
   public void removeAccessTokenUsingRefreshToken(OAuth2RefreshToken refreshToken) {
     String tokenValue = refreshToken.getValue();
+    // Lookup RefreshTokenToAccessToken table for locating access token
     RefreshTokenToAccessToken refreshTokenToAccessToken = refreshTokenToAccessTokenRepository.findOne(tokenValue);
-    String accessToken = refreshTokenToAccessToken.getAccessTokenKey();
-    List<RegularStatement> finalStatementList = new ArrayList<RegularStatement>();
     if (refreshTokenToAccessToken != null) {
-      List<RegularStatement> statementList = new ArrayList<RegularStatement>();
-      Delete refreshTokenToAccessTokenDelete = CassandraTemplate.createDeleteQuery(RefreshTokenToAccessToken.TABLE,
-          refreshTokenToAccessToken, null, cassandraTemplate.getConverter());
+      String accessTokenKey = refreshTokenToAccessToken.getAccessTokenKey();
+      AccessToken accessToken = accessTokenRepository.findOne(accessTokenKey);
+      String jsonOAuth2AccessToken = accessToken.getoAuth2AccessToken();
+      OAuth2AccessToken oAuth2AccessToken = OAuthUtil.deserializeOAuth2AccessToken(jsonOAuth2AccessToken);
+      // Delete access token from all related tables
+      List<RegularStatement> statementList = prepareRemoveAccessTokenStatements(oAuth2AccessToken);
+      // Delete from RefreshTokenToAccessToken table
+      Delete refreshTokenToAccessTokenDelete = CassandraTemplate.createDeleteQuery(RefreshTokenToAccessToken.TABLE, refreshTokenToAccessToken, null, cassandraTemplate.getConverter());
       statementList.add(refreshTokenToAccessTokenDelete);
-      finalStatementList = Stream
-          .concat(statementList.stream(), prepareRemoveAccessTokenStatements(accessToken).stream())
-          .collect(Collectors.toList());
+      Batch batch = QueryBuilder.batch(statementList.toArray(new RegularStatement[statementList.size()]));
+      cassandraTemplate.execute(batch);
     }
-    Batch batch = QueryBuilder.batch(finalStatementList.toArray(new RegularStatement[finalStatementList.size()]));
-    cassandraTemplate.execute(batch);
   }
 
   @Override
@@ -389,16 +329,8 @@ public class CassandraTokenStore implements TokenStore {
     String key = authenticationKeyGenerator.extractKey(authentication);
     AuthenticationToAccessToken authenticationToAccessToken = authenticationToAccessTokenRepository.findOne(key);
     if (authenticationToAccessToken != null) {
-      String jsonOAuth2AccessToken = authenticationToAccessToken.getoAuth2AccessToken();
-      OAuth2AccessToken oAuth2AccessToken;
-      try {
-        oAuth2AccessToken = mapper.readValue(jsonOAuth2AccessToken, OAuth2AccessToken.class);
-      } catch (Exception e) {
-        logger.error("Error converting json string to OAuth2AccessToken. {}", jsonOAuth2AccessToken);
-        throw new RuntimeException(e);
-      }
-      if (oAuth2AccessToken != null
-          && !key.equals(authenticationKeyGenerator.extractKey(readAuthentication(oAuth2AccessToken.getValue())))) {
+      OAuth2AccessToken oAuth2AccessToken = OAuthUtil.deserializeOAuth2AccessToken(authenticationToAccessToken.getoAuth2AccessToken());
+      if (oAuth2AccessToken != null && !key.equals(authenticationKeyGenerator.extractKey(readAuthentication(oAuth2AccessToken.getValue())))) {
         storeAccessToken(oAuth2AccessToken, authentication);
       }
       return oAuth2AccessToken;
@@ -409,65 +341,23 @@ public class CassandraTokenStore implements TokenStore {
 
   @Override
   public Collection<OAuth2AccessToken> findTokensByClientIdAndUserName(String clientId, String userName) {
-    String key = getApprovalKey(clientId, userName);
-    UsernameToAccessToken usernameToAccessToken = usernameToAccessTokenRepository.findOne(key);
-    if (usernameToAccessToken != null) {
-      Set<String> jsonOAuth2AccessTokenSet = usernameToAccessToken.getoAuth2AccessTokenSet();
-      if (jsonOAuth2AccessTokenSet != null) {
-        Set<OAuth2AccessToken> oAuth2AccessTokenSet = new HashSet<OAuth2AccessToken>();
-        for (String jsonOAuth2AccessToken : jsonOAuth2AccessTokenSet) {
-          OAuth2AccessToken oAuth2AccessToken;
-          try {
-            oAuth2AccessToken = mapper.readValue(jsonOAuth2AccessToken, OAuth2AccessToken.class);
-            oAuth2AccessTokenSet.add(oAuth2AccessToken);
-          } catch (Exception e) {
-            logger.error("Error converting json string to OAuth2AccessToken. {}", jsonOAuth2AccessToken);
-            throw new RuntimeException(e);
-          }
-        }
-        return Collections.<OAuth2AccessToken>unmodifiableCollection(oAuth2AccessTokenSet);
-      } else {
-        return Collections.<OAuth2AccessToken>emptySet();
-      }
-    } else {
-      return Collections.<OAuth2AccessToken>emptySet();
-    }
+    String key = OAuthUtil.getApprovalKey(clientId, userName);
+    Optional<List<UsernameToAccessToken>> optionalUsernameToAccessTokenSet = usernameToAccessTokenRepository.findByKey(key);
+    Set<OAuth2AccessToken> oAuth2AccessTokenSet = new HashSet<OAuth2AccessToken>();
+    optionalUsernameToAccessTokenSet.ifPresent(usernameToAccessTokenSet -> {
+      usernameToAccessTokenSet.forEach(usernameToAccessToken -> oAuth2AccessTokenSet.add(OAuthUtil.deserializeOAuth2AccessToken(usernameToAccessToken.getOAuth2AccessToken())));
+    });
+    return oAuth2AccessTokenSet;
   }
 
   @Override
   public Collection<OAuth2AccessToken> findTokensByClientId(String clientId) {
-    ClientIdToAccessToken clientIdToAccessToken = clientIdToAccessTokenRepository.findOne(clientId);
-    if (clientIdToAccessToken != null) {
-      Set<String> jsonOAuth2AccessTokenSet = clientIdToAccessToken.getoAuth2AccessTokenSet();
-      if (jsonOAuth2AccessTokenSet != null) {
-        Set<OAuth2AccessToken> oAuth2AccessTokenSet = new HashSet<OAuth2AccessToken>();
-        for (String jsonOAuth2AccessToken : jsonOAuth2AccessTokenSet) {
-          OAuth2AccessToken oAuth2AccessToken;
-          try {
-            oAuth2AccessToken = mapper.readValue(jsonOAuth2AccessToken, OAuth2AccessToken.class);
-            oAuth2AccessTokenSet.add(oAuth2AccessToken);
-          } catch (Exception e) {
-            logger.error("Error converting json string to OAuth2AccessToken. {}", jsonOAuth2AccessToken);
-            throw new RuntimeException(e);
-          }
-        }
-        return Collections.<OAuth2AccessToken>unmodifiableCollection(oAuth2AccessTokenSet);
-      } else {
-        return Collections.<OAuth2AccessToken>emptySet();
-      }
-    } else {
-      return Collections.<OAuth2AccessToken>emptySet();
-    }
-  }
-
-  private String getApprovalKey(OAuth2Authentication authentication) {
-    String userName = authentication.getUserAuthentication() == null ? ""
-        : authentication.getUserAuthentication().getName();
-    return getApprovalKey(authentication.getOAuth2Request().getClientId(), userName);
-  }
-
-  private String getApprovalKey(String clientId, String userName) {
-    return clientId + (userName == null ? "" : ":" + userName);
+    Optional<List<ClientIdToAccessToken>> optionalClientIdToAccessTokenSet = clientIdToAccessTokenRepository.findByKey(clientId);
+    Set<OAuth2AccessToken> oAuth2AccessTokenSet = new HashSet<OAuth2AccessToken>();
+    optionalClientIdToAccessTokenSet.ifPresent(clientIdToAccessTokenSet -> {
+      clientIdToAccessTokenSet.forEach(clientIdToAccessToken -> oAuth2AccessTokenSet.add(OAuthUtil.deserializeOAuth2AccessToken(clientIdToAccessToken.getOAuth2AccessToken())));
+    });
+    return oAuth2AccessTokenSet;
   }
 
 }
