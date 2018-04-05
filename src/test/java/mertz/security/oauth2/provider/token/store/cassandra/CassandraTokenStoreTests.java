@@ -142,4 +142,19 @@ public class CassandraTokenStoreTests extends TokenStoreBaseTests {
     assertNull(getTokenStore().readAccessToken(accessToken));
   }
 
+  @Test
+  public void storeAccessTokenWithExpiringRefreshToken() throws InterruptedException {
+    String accessToken = "accessToken-" + UUID.randomUUID();
+    OAuth2Authentication expectedAuthentication = new OAuth2Authentication(RequestTokenFactory.createOAuth2Request("id", false), new TestAuthentication("test2", false));
+    DefaultOAuth2AccessToken expectedOAuth2AccessToken = new DefaultOAuth2AccessToken(accessToken);
+    String refreshToken = "refreshToken-" + UUID.randomUUID();
+    DefaultOAuth2RefreshToken expectedExpiringRefreshToken = new DefaultExpiringOAuth2RefreshToken(refreshToken, new Date(System.currentTimeMillis() + 2000));
+    expectedOAuth2AccessToken.setRefreshToken(expectedExpiringRefreshToken);
+    getTokenStore().storeAccessToken(expectedOAuth2AccessToken, expectedAuthentication);
+    // let the access token expire
+    Thread.sleep(5000);
+    // now it should be gone
+    assertNull(getTokenStore().readRefreshToken(refreshToken));
+  }
+
 }
