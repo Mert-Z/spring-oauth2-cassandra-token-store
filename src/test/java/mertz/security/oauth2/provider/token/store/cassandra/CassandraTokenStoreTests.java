@@ -62,15 +62,15 @@ public class CassandraTokenStoreTests extends TokenStoreBaseTests {
 
   @Test
   public void testExpiringRefreshToken() throws InterruptedException {
-    String refreshToken = UUID.randomUUID().toString();
-    DefaultOAuth2RefreshToken expectedExpiringRefreshToken = new DefaultExpiringOAuth2RefreshToken(refreshToken, new Date(System.currentTimeMillis() + 1500));
+    String refreshToken = "refreshToken-" + UUID.randomUUID();
+    DefaultOAuth2RefreshToken expectedExpiringRefreshToken = new DefaultExpiringOAuth2RefreshToken(refreshToken, new Date(System.currentTimeMillis() + 1000));
     OAuth2Authentication expectedAuthentication = new OAuth2Authentication(RequestTokenFactory.createOAuth2Request("id", false), new TestAuthentication("test2", false));
     getTokenStore().storeRefreshToken(expectedExpiringRefreshToken, expectedAuthentication);
     OAuth2RefreshToken actualExpiringRefreshToken = getTokenStore().readRefreshToken(refreshToken);
     assertEquals(expectedExpiringRefreshToken, actualExpiringRefreshToken);
     assertEquals(expectedAuthentication, getTokenStore().readAuthenticationForRefreshToken(expectedExpiringRefreshToken));
     // let the token expire
-    Thread.sleep(1500);
+    Thread.sleep(2000);
     // now it should be gone
     assertNull(getTokenStore().readRefreshToken(refreshToken));
     assertNull(getTokenStore().readAuthenticationForRefreshToken(expectedExpiringRefreshToken));
@@ -78,16 +78,16 @@ public class CassandraTokenStoreTests extends TokenStoreBaseTests {
 
   @Test
   public void testExpiringAccessToken() throws InterruptedException {
-    String accessToken = UUID.randomUUID().toString();
+    String accessToken = "accessToken-" + UUID.randomUUID();
     OAuth2Authentication expectedAuthentication = new OAuth2Authentication(RequestTokenFactory.createOAuth2Request("id", false), new TestAuthentication("test2", false));
     DefaultOAuth2AccessToken expectedOAuth2AccessToken = new DefaultOAuth2AccessToken(accessToken);
-    expectedOAuth2AccessToken.setExpiration(new Date(System.currentTimeMillis() + 1500));
+    expectedOAuth2AccessToken.setExpiration(new Date(System.currentTimeMillis() + 1000));
     getTokenStore().storeAccessToken(expectedOAuth2AccessToken, expectedAuthentication);
     OAuth2AccessToken actualOAuth2AccessToken = getTokenStore().readAccessToken(accessToken);
     assertEquals(expectedOAuth2AccessToken, actualOAuth2AccessToken);
     assertEquals(expectedAuthentication, getTokenStore().readAuthentication(expectedOAuth2AccessToken));
     // let the token expire
-    Thread.sleep(1500);
+    Thread.sleep(2000);
     // now it should be gone
     assertNull(getTokenStore().readAccessToken(accessToken));
     assertNull(getTokenStore().readAuthentication(expectedOAuth2AccessToken));
@@ -97,7 +97,8 @@ public class CassandraTokenStoreTests extends TokenStoreBaseTests {
   public void storeAccessTokenWithoutRefreshTokenRemoveAccessTokenVerifyTokenRemoved() {
     OAuth2Request request = RequestTokenFactory.createOAuth2Request("clientId", false);
     TestingAuthenticationToken authentication = new TestingAuthenticationToken("user", "password");
-    OAuth2AccessToken oauth2AccessToken = new DefaultOAuth2AccessToken("access-token-" + UUID.randomUUID());
+    String accessToken = "accessToken-" + UUID.randomUUID();
+    OAuth2AccessToken oauth2AccessToken = new DefaultOAuth2AccessToken(accessToken);
     OAuth2Authentication oauth2Authentication = new OAuth2Authentication(request, authentication);
     getTokenStore().storeAccessToken(oauth2AccessToken, oauth2Authentication);
     getTokenStore().removeAccessToken(oauth2AccessToken);
@@ -110,13 +111,13 @@ public class CassandraTokenStoreTests extends TokenStoreBaseTests {
     String accessToken = "accessToken-" + UUID.randomUUID();
     OAuth2Authentication expectedAuthentication = new OAuth2Authentication(RequestTokenFactory.createOAuth2Request("id", false), new TestAuthentication("test2", false));
     DefaultOAuth2AccessToken expectedOAuth2AccessToken = new DefaultOAuth2AccessToken(accessToken);
-    expectedOAuth2AccessToken.setExpiration(new Date(System.currentTimeMillis() + 1500));
-    String refreshToken = "testToken-" + UUID.randomUUID();
+    expectedOAuth2AccessToken.setExpiration(new Date(System.currentTimeMillis() + 1000));
+    String refreshToken = "refreshToken-" + UUID.randomUUID();
     DefaultOAuth2RefreshToken expectedRefreshToken = new DefaultOAuth2RefreshToken(refreshToken);
     expectedOAuth2AccessToken.setRefreshToken(expectedRefreshToken);
     getTokenStore().storeAccessToken(expectedOAuth2AccessToken, expectedAuthentication);
     // let the access token expire
-    Thread.sleep(1500);
+    Thread.sleep(2000);
     // now it should be gone
     assertNull(getTokenStore().readAccessToken(accessToken));
     // use refresh token to remove already expired access token, expect no issues since access token has already been removed.
@@ -128,7 +129,7 @@ public class CassandraTokenStoreTests extends TokenStoreBaseTests {
     String accessToken = "accessToken-" + UUID.randomUUID();
     OAuth2Authentication expectedAuthentication = new OAuth2Authentication(RequestTokenFactory.createOAuth2Request("id", false), new TestAuthentication("test2", false));
     DefaultOAuth2AccessToken expectedOAuth2AccessToken = new DefaultOAuth2AccessToken(accessToken);
-    String refreshToken = "testToken-" + UUID.randomUUID();
+    String refreshToken = "refreshToken-" + UUID.randomUUID();
     DefaultOAuth2RefreshToken expectedRefreshToken = new DefaultOAuth2RefreshToken(refreshToken);
     expectedOAuth2AccessToken.setRefreshToken(expectedRefreshToken);
     getTokenStore().storeAccessToken(expectedOAuth2AccessToken, expectedAuthentication);
