@@ -18,7 +18,7 @@ Dependencies listed below;
 
 ### Installing
 Implementation follows the same directory structure with token store examples provided by [spring-security-oauth](https://github.com/spring-projects/spring-security-oauth/tree/master/spring-security-oauth2/src/main/java/org/springframework/security/oauth2/provider/token/store). You can simply copy this repository and autowire *CassandraTokenStore* into [AuthorizationServerEndpointsConfigurer.tokenStore(TokenStore)](https://docs.spring.io/spring-security/oauth/apidocs/org/springframework/security/oauth2/config/annotation/web/configurers/AuthorizationServerEndpointsConfigurer.html)
-```
+```java
 @Configuration
 public class AuthorizationServerConfiguration extends AuthorizationServerConfigurerAdapter {
 
