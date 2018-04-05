@@ -312,6 +312,10 @@ public class CassandraTokenStore implements TokenStore {
     if (refreshTokenToAccessToken != null) {
       String accessTokenKey = refreshTokenToAccessToken.getAccessTokenKey();
       AccessToken accessToken = accessTokenRepository.findOne(accessTokenKey);
+      if (accessToken == null) {
+        // access token removed already or expired.
+        return;
+      }
       String jsonOAuth2AccessToken = accessToken.getoAuth2AccessToken();
       OAuth2AccessToken oAuth2AccessToken = OAuthUtil.deserializeOAuth2AccessToken(jsonOAuth2AccessToken);
       // Delete access token from all related tables
