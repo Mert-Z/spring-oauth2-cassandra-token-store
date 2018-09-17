@@ -1,42 +1,41 @@
 buildscript {
     ext {
-        springBootVersion = '2.0.2.RELEASE'
         coverallsVersion = '2.8.1'
     }
     repositories {
         mavenCentral()
     }
     dependencies {
-        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
         classpath("org.kt3k.gradle.plugin:coveralls-gradle-plugin:${coverallsVersion}")
     }
 }
 
 apply plugin: 'java'
-apply plugin: 'org.springframework.boot'
-apply plugin: 'io.spring.dependency-management'
 apply plugin: 'jacoco'
 apply plugin: 'com.github.kt3k.coveralls'
 apply plugin: 'maven'
 
 version = '0.0.1-SNAPSHOT'
 group = 'mertz.security'
+
 sourceCompatibility = 1.8
 
 repositories {
   mavenCentral()
+    maven {
+        url 'https://repo.spring.io/libs-release'
+    }
 }
 
 dependencies {
-  compile('org.springframework.boot:spring-boot-starter-data-cassandra')
-  compile('org.springframework.boot:spring-boot-starter-security')
+  compile('org.springframework.data:spring-data-cassandra:2.0.10.RELEASE')
   compile('org.springframework.security.oauth:spring-security-oauth2:2.3.3.RELEASE')
   compile('com.fasterxml.jackson.core:jackson-databind:2.9.0')
   compile('com.fasterxml.jackson.core:jackson-annotations:2.9.0')
   compile('com.fasterxml.jackson.core:jackson-core:2.9.0')
 
-  testCompile('org.springframework.boot:spring-boot-starter-test')
-  testCompile('org.springframework.security:spring-security-test')
+  testCompile('org.springframework.boot:spring-boot-starter-test:2.0.2.RELEASE')
+  testCompile('org.springframework.security:spring-security-test:5.0.8.RELEASE')
   testCompile('org.cassandraunit:cassandra-unit-spring:3.1.3.2')
 }
 
