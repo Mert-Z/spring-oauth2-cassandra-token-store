@@ -52,35 +52,48 @@ public class CassandraTokenStore implements TokenStore {
 
   private static final Logger logger = LoggerFactory.getLogger(CassandraTokenStore.class);
 
-  @Autowired
-  private AuthenticationRepository authenticationRepository;
+  private final AuthenticationRepository authenticationRepository;
+
+  private final AccessTokenRepository accessTokenRepository;
+
+  private final RefreshTokenRepository refreshTokenRepository;
+
+  private final RefreshTokenAuthenticationRepository refreshTokenAuthenticationRepository;
+
+  private final AuthenticationToAccessTokenRepository authenticationToAccessTokenRepository;
+
+  private final UsernameToAccessTokenRepository usernameToAccessTokenRepository;
+
+  private final ClientIdToAccessTokenRepository clientIdToAccessTokenRepository;
+
+  private final RefreshTokenToAccessTokenRepository refreshTokenToAccessTokenRepository;
+
+  private final CassandraTemplate cassandraTemplate;
+
+  private final AuthenticationKeyGenerator authenticationKeyGenerator;
 
   @Autowired
-  private AccessTokenRepository accessTokenRepository;
-
-  @Autowired
-  private RefreshTokenRepository refreshTokenRepository;
-
-  @Autowired
-  private RefreshTokenAuthenticationRepository refreshTokenAuthenticationRepository;
-
-  @Autowired
-  private AuthenticationToAccessTokenRepository authenticationToAccessTokenRepository;
-
-  @Autowired
-  private UsernameToAccessTokenRepository usernameToAccessTokenRepository;
-
-  @Autowired
-  private ClientIdToAccessTokenRepository clientIdToAccessTokenRepository;
-
-  @Autowired
-  private RefreshTokenToAccessTokenRepository refreshTokenToAccessTokenRepository;
-
-  @Autowired
-  private CassandraTemplate cassandraTemplate;
-
-  @Autowired
-  private AuthenticationKeyGenerator authenticationKeyGenerator;
+  public CassandraTokenStore(AuthenticationRepository authenticationRepository,
+                             AccessTokenRepository accessTokenRepository,
+                             RefreshTokenRepository refreshTokenRepository,
+                             RefreshTokenAuthenticationRepository refreshTokenAuthenticationRepository,
+                             AuthenticationToAccessTokenRepository authenticationToAccessTokenRepository,
+                             UsernameToAccessTokenRepository usernameToAccessTokenRepository,
+                             ClientIdToAccessTokenRepository clientIdToAccessTokenRepository,
+                             RefreshTokenToAccessTokenRepository refreshTokenToAccessTokenRepository,
+                             CassandraTemplate cassandraTemplate,
+                             AuthenticationKeyGenerator authenticationKeyGenerator) {
+    this.authenticationRepository = authenticationRepository;
+    this.accessTokenRepository = accessTokenRepository;
+    this.refreshTokenRepository = refreshTokenRepository;
+    this.refreshTokenAuthenticationRepository = refreshTokenAuthenticationRepository;
+    this.authenticationToAccessTokenRepository = authenticationToAccessTokenRepository;
+    this.usernameToAccessTokenRepository = usernameToAccessTokenRepository;
+    this.clientIdToAccessTokenRepository = clientIdToAccessTokenRepository;
+    this.refreshTokenToAccessTokenRepository = refreshTokenToAccessTokenRepository;
+    this.cassandraTemplate = cassandraTemplate;
+    this.authenticationKeyGenerator = authenticationKeyGenerator;
+  }
 
   @Override
   public OAuth2Authentication readAuthentication(OAuth2AccessToken token) {
