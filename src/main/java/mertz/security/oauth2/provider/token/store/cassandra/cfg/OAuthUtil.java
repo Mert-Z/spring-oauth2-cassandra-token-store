@@ -27,11 +27,6 @@ public class OAuthUtil {
     return new DefaultAuthenticationKeyGenerator();
   }
 
-  @Bean
-  public ObjectMapper getObjectMapper() {
-    return new ObjectMapper();
-  }
-
   public static OAuth2AccessToken deserializeOAuth2AccessToken(String jsonOAuth2AccessToken) {
     try {
       return OAUTH2ACCESSTOKEN_OBJECT_READER.readValue(jsonOAuth2AccessToken);
