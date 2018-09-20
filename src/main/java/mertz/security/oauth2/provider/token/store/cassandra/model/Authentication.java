@@ -1,9 +1,9 @@
 package mertz.security.oauth2.provider.token.store.cassandra.model;
 
-import java.nio.ByteBuffer;
+import org.springframework.data.cassandra.core.mapping.PrimaryKey;
+import org.springframework.data.cassandra.core.mapping.Table;
 
-import org.springframework.data.cassandra.mapping.PrimaryKey;
-import org.springframework.data.cassandra.mapping.Table;
+import java.nio.ByteBuffer;
 
 @Table(value = Authentication.TABLE)
 public class Authentication {

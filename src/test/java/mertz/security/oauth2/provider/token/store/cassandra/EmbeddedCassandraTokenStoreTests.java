@@ -4,7 +4,9 @@ import org.cassandraunit.spring.CassandraDataSet;
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener;
 import org.cassandraunit.spring.EmbeddedCassandra;
 import org.junit.runner.RunWith;
+import org.springframework.boot.test.context.ConfigFileApplicationContextInitializer;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.test.context.TestExecutionListeners.MergeMode;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -18,5 +20,4 @@ import org.springframework.test.context.junit4.SpringRunner;
 @CassandraDataSet(keyspace = "${spring.data.cassandra.keyspace-name}")
 @ActiveProfiles(profiles = "embeddedcassandra", inheritProfiles = false)
 public class EmbeddedCassandraTokenStoreTests extends CassandraTokenStoreTests {
-
 }

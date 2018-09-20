@@ -88,7 +88,7 @@ public abstract class TokenStoreBaseTests {
 		assertEquals(expectedOAuth2AccessToken, actualOAuth2AccessToken);
 		assertEquals(authentication.getUserAuthentication(), getTokenStore().readAuthentication(expectedOAuth2AccessToken.getValue()).getUserAuthentication());
 		// The authorizationRequest does not match because it is unapproved, but the token was granted to an approved request
-		assertFalse(storedOAuth2Request.equals(getTokenStore().readAuthentication(expectedOAuth2AccessToken.getValue()).getOAuth2Request()));
+		assertNotEquals(storedOAuth2Request, getTokenStore().readAuthentication(expectedOAuth2AccessToken.getValue()).getOAuth2Request());
 		actualOAuth2AccessToken = getTokenStore().getAccessToken(authentication);
 		assertEquals(expectedOAuth2AccessToken, actualOAuth2AccessToken);
 		getTokenStore().removeAccessToken(expectedOAuth2AccessToken);
@@ -196,12 +196,13 @@ public abstract class TokenStoreBaseTests {
 
 	@Test
 	public void testRemovedTokenCannotBeFoundByUsername() {
+		String clientId = "id"+UUID.randomUUID();
 		OAuth2AccessToken token = new DefaultOAuth2AccessToken("testToken");
 		OAuth2Authentication expectedAuthentication = new OAuth2Authentication(RequestTokenFactory.createOAuth2Request(
-				"id", false), new TestAuthentication("test2", false));
+				clientId, false), new TestAuthentication("test2", false));
 		getTokenStore().storeAccessToken(token, expectedAuthentication);
 		getTokenStore().removeAccessToken(token);
-		Collection<OAuth2AccessToken> tokens = getTokenStore().findTokensByClientIdAndUserName("id", "test2");
+		Collection<OAuth2AccessToken> tokens = getTokenStore().findTokensByClientIdAndUserName(clientId, "test2");
 		assertFalse(tokens.contains(token));
 		assertTrue(tokens.isEmpty());
 	}
