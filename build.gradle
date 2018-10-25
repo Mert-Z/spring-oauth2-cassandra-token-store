@@ -18,8 +18,9 @@ apply plugin: 'org.springframework.boot'
 apply plugin: 'jacoco'
 apply plugin: 'com.github.kt3k.coveralls'
 
-version = '0.0.1-SNAPSHOT'
+version = '1.0'
 sourceCompatibility = 1.8
+group = 'com.github.mert-z'
 
 repositories {
   mavenCentral()
