@@ -17,7 +17,14 @@ Dependencies listed below;
 * **jackson-databind** provides ObjectMapper API which is used to serialize OAuth tokens before storing them in Cassandra
 
 ### Installing
-Implementation follows the same directory structure with token store examples provided by [spring-security-oauth](https://github.com/spring-projects/spring-security-oauth/tree/master/spring-security-oauth2/src/main/java/org/springframework/security/oauth2/provider/token/store). You can simply copy this repository and autowire *CassandraTokenStore* into [AuthorizationServerEndpointsConfigurer.tokenStore(TokenStore)](https://docs.spring.io/spring-security/oauth/apidocs/org/springframework/security/oauth2/config/annotation/web/configurers/AuthorizationServerEndpointsConfigurer.html)
+Implementation follows the same directory structure with token store examples provided by [spring-security-oauth](https://github.com/spring-projects/spring-security-oauth/tree/master/spring-security-oauth2/src/main/java/org/springframework/security/oauth2/provider/token/store). You can simply configure the dependency and autowire *CassandraTokenStore* into [AuthorizationServerEndpointsConfigurer.tokenStore(TokenStore)](https://docs.spring.io/spring-security/oauth/apidocs/org/springframework/security/oauth2/config/annotation/web/configurers/AuthorizationServerEndpointsConfigurer.html)
+
+```groovy
+dependencies {
+    compile "com.github.mert-z:spring-oauth2-cassandra-token-store:1.0"
+}
+```
+
 ```java
 @Configuration
 public class AuthorizationServerConfiguration extends AuthorizationServerConfigurerAdapter {
